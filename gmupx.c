@@ -1,41 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <string.h>
-#include <stdbool.h>
-#include <windows.h>
-
-#define DEBUGLINE printf("== LINE: %d ==\n", __LINE__);
-
-#define fail(format, ...)                       \
-    {                                           \
-        fprintf(stderr, format, ##__VA_ARGS__); \
-        exit(EXIT_FAILURE);                     \
-    }
-
-#define MZ_STUB             "MZ"
-#define MZ_STUB_ADDRESS     0x0
-
-#define UPX_STUB            "UPX0"
-#define UPX_STUB_ADDRESS    0x1f8
-
-#define DATA_POINTER_80     0x144ac0
-#define DATA_POINTER_81     0x226cfb
-#define DATA_POINTER_82     0x226cfb
-
-#define DATA_ADDRESS_80     0x1e8480
-#define DATA_ADDRESS_81     0x39fbc4
-#define DATA_ADDRESS_82     0x365244
-
-typedef unsigned int uint;
-
-typedef enum
-{
-    GM_UNKNOWN,
-    GM_80,
-    GM_81,
-    GM_82,
-} gm_version;
+#include "gmupx.h"
 
 static const char *VersionString[] = {
     "",
@@ -57,75 +20,6 @@ static const uint DataLocation[] = {
     DATA_ADDRESS_81,
     DATA_ADDRESS_82,
 };
-
-bool fexist(const char *filename)
-{
-    FILE *f = fopen(filename, "rb");
-    if (f) fclose(f);
-    return f != NULL;
-}
-
-uint fcmp(FILE *file, const char *str, size_t size, long offset)
-{
-    int p = 0;
-    fseek(file, offset, SEEK_SET);
-    while (--size)
-        if (fgetc(file) != str[p++])
-            break;
-    return size;
-}
-
-uint freaduint(FILE *file, long offset)
-{
-    uint buffer;
-    fseek(file, offset, SEEK_SET);
-    fread(&buffer, sizeof(buffer), 1, file);
-    return buffer;
-}
-
-void fcopy(const char *source, const char *dest)
-{
-    char buffer[4096];
-    FILE *in = fopen(source, "rb");
-    FILE *out = fopen(dest, "wb");
-
-    while (!feof(in))
-    {
-        size_t bytes = fread(buffer, sizeof(char), sizeof(buffer), in);
-        if (bytes)
-            fwrite(buffer, sizeof(char), bytes, out);
-    }
-
-    fclose(in);
-    fclose(out);
-}
-
-int systemf(const char *format, ...)
-{
-    char command[1024];
-    va_list args;
-    va_start(args, format);
-    vsprintf(command, format, args);
-    va_end(args);
-    return system(command);
-}
-
-int prompt(const char *question)
-{
-    int c;
-    printf("%s [y/n] ", question);
-    while (c = getchar(), c != 'y' && c != 'n');
-    return c == 'y';
-}
-
-long fsize(FILE *stream)
-{
-    long p1, p2;
-    p1 = ftell(stream);
-    fseek(stream, 0, SEEK_END);
-    p2 = ftell(stream);
-    return p2 - p1;
-}
 
 int main(int argc, const char *argv[])
 {
@@ -254,4 +148,73 @@ int main(int argc, const char *argv[])
     printf("Done.\n");
 
     return EXIT_SUCCESS;
+}
+
+bool fexist(const char *filename)
+{
+    FILE *f = fopen(filename, "rb");
+    if (f) fclose(f);
+    return f != NULL;
+}
+
+uint fcmp(FILE *file, const char *str, size_t size, long offset)
+{
+    int p = 0;
+    fseek(file, offset, SEEK_SET);
+    while (--size)
+        if (fgetc(file) != str[p++])
+            break;
+    return size;
+}
+
+uint freaduint(FILE *file, long offset)
+{
+    uint buffer;
+    fseek(file, offset, SEEK_SET);
+    fread(&buffer, sizeof(buffer), 1, file);
+    return buffer;
+}
+
+void fcopy(const char *source, const char *dest)
+{
+    char buffer[4096];
+    FILE *in = fopen(source, "rb");
+    FILE *out = fopen(dest, "wb");
+
+    while (!feof(in))
+    {
+        size_t bytes = fread(buffer, sizeof(char), sizeof(buffer), in);
+        if (bytes)
+            fwrite(buffer, sizeof(char), bytes, out);
+    }
+
+    fclose(in);
+    fclose(out);
+}
+
+int systemf(const char *format, ...)
+{
+    char command[1024];
+    va_list args;
+    va_start(args, format);
+    vsprintf(command, format, args);
+    va_end(args);
+    return system(command);
+}
+
+int prompt(const char *question)
+{
+    int c;
+    printf("%s [y/n] ", question);
+    while (c = getchar(), c != 'y' && c != 'n');
+    return c == 'y';
+}
+
+long fsize(FILE *stream)
+{
+    long p1, p2;
+    p1 = ftell(stream);
+    fseek(stream, 0, SEEK_END);
+    p2 = ftell(stream);
+    return p2 - p1;
 }
