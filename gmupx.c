@@ -24,13 +24,13 @@ static const uint DataLocation[] = {
 int main(int argc, const char *argv[])
 {
     // Check UPX
-    bool hasUpx = systemf("upx 2>nul") != -1;
+    bool hasUpx = systemf("where upx /Q") == 0;
 
     if (!hasUpx)
         printf(
             "Cannot detect UPX on your system.\n"
             "Patching process will be inefficient and results in\n"
-            "slower game loading.\n");
+            "slower game loading.\n\n");
 
     // Check argument
     if (argc != 2)
