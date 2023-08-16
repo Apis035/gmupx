@@ -23,16 +23,20 @@ static const uint DataLocation[] = {
 
 int main(int argc, const char *argv[])
 {
-    const char       *input;
-          char       backup[1024];
-          FILE       *fInput, *fBackup;
-          gm_version version;
+    // Check UPX
+    bool hasUpx = systemf("upx 2>nul") != -1;
+
+    if (!hasUpx)
+        printf(
+            "Cannot detect UPX on your system.\n"
+            "Patching process will be inefficient and results in\n"
+            "slower game loading.\n");
 
     // Check argument
     if (argc != 2)
         fail("Usage: %s <game maker exe>", argv[0]);
 
-    input = argv[1];
+    const char *input = argv[1];
 
     // Check file
     printf("Checking file <%s>...\n", input);
@@ -40,29 +44,32 @@ int main(int argc, const char *argv[])
     if (!fexist(input))
         fail("Cannot open file, %s", strerror(errno));
 
-    fInput = fopen(input, "rb");
-        // Check executable file
-        if (fcmp(fInput, MZ_STUB, sizeof(MZ_STUB), MZ_STUB_ADDRESS) != 0)
-            fail("File is not an executable.");
+    FILE *fInput = fopen(input, "rb");
 
-        // Check compressed file
-        if (fcmp(fInput, UPX_STUB, sizeof(UPX_STUB), UPX_STUB_ADDRESS) == 0)
-            fail("File is already compressed with UPX.");
+    // Check executable file
+    if (fcmp(fInput, MZ_STUB, sizeof(MZ_STUB), MZ_STUB_ADDRESS) != 0)
+        fail("File is not an executable.");
 
-        // Check version
-        version =
-            freaduint(fInput, DATA_POINTER_80) == DATA_ADDRESS_80 ? GM_80 :
-            freaduint(fInput, DATA_POINTER_81) == DATA_ADDRESS_81 ? GM_81 :
-            freaduint(fInput, DATA_POINTER_82) == DATA_ADDRESS_82 ? GM_82 :
-            GM_UNKNOWN;
+    // Check compressed file
+    if (fcmp(fInput, UPX_STUB, sizeof(UPX_STUB), UPX_STUB_ADDRESS) == 0)
+        fail("File is already compressed with UPX.");
 
-        if (version == GM_UNKNOWN)
-            fail("Cannot detect a Game Maker 8.0, 8.1, or 8.2 game.");
+    // Check version
+    const gm_version version =
+        freaduint(fInput, DATA_POINTER_80) == DATA_ADDRESS_80 ? GM_80 :
+        freaduint(fInput, DATA_POINTER_81) == DATA_ADDRESS_81 ? GM_81 :
+        freaduint(fInput, DATA_POINTER_82) == DATA_ADDRESS_82 ? GM_82 :
+        GM_UNKNOWN;
 
-        printf("Detected a Game Maker %s game.\n", VersionString[version]);
+    if (version == GM_UNKNOWN)
+        fail("Cannot detect a Game Maker 8.0, 8.1, or 8.2 game.");
+
+    printf("Detected a Game Maker %s game.\n", VersionString[version]);
+
     fclose(fInput);
 
     // Create backup
+    char backup[1024];
     sprintf(backup, "%s.bak", input);
 
     fcopy(input, backup);
@@ -71,14 +78,10 @@ int main(int argc, const char *argv[])
 
     printf("Backup file created on <%s>.\n", backup);
 
-    // Check UPX
-    bool compress =
-        systemf("upx 2>nul") != -1 &&
+    if (hasUpx &&
         prompt(
             "Detected UPX on your system.\n"
-            "Do you want to compress the executable?");
-
-    if (compress)
+            "Do you want to compress the executable?"))
     {
         char
             tempFile[MAX_PATH];
@@ -134,9 +137,7 @@ int main(int argc, const char *argv[])
          **/
     }
     else if (prompt(
-        "Cannot detect UPX on your system.\n"
-        "Continue patching without compressing? Patch will be inefficient "
-        "and results in slow game loading."))
+        "Inefficient patching will be performed. Continue?"))
     {
         uint buffer = 0;
         fInput = fopen(input, "rb+");
